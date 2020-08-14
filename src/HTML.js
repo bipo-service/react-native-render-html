@@ -309,7 +309,7 @@ export default class HTML extends PureComponent {
 
         if (node.parent && node.parent.name && PREFORMATTED_TAGS.indexOf(node.parent.name) === -1) {
           // Remove line breaks in non-pre-formatted tags
-          data = data.replace(/(\r\n|\n|\r)/gm, '');
+          data = data.replace(/(\r\n|\n|\r)/gm, ' ');
         }
 
         // Text without tags, these can be mapped to the Text wrapper
