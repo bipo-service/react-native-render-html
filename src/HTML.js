@@ -12,12 +12,18 @@ import {
   BLOCK_TAGS,
   TEXT_TAGS,
   MIXED_TAGS,
-  IGNORED_TAGS,
+  // IGNORED_TAGS,
   TEXT_TAGS_IGNORING_ASSOCIATION,
   STYLESETS,
   TextOnlyPropTypes,
   PREFORMATTED_TAGS,
 } from './HTMLUtils';
+import {
+  alterNode as alterNodePlugin,
+  IGNORED_TAGS,
+  makeTableRenderer,
+} from '@native-html/table-plugin';
+import WebView from 'react-native-webview';
 import { generateDefaultBlockStyles, generateDefaultTextStyles } from './HTMLDefaultStyles';
 import { DomHandler, Parser } from 'htmlparser2';
 import * as HTMLRenderers from './HTMLRenderers';
@@ -77,7 +83,21 @@ export default class HTML extends PureComponent {
   constructor(props) {
     super(props);
     this.state = {};
+    const cssRules = `
+    table {
+      table-layout: fixed !important;
+      width: 100% !important;
+    }
+    td {
+      word-wrap: break-word !important;
+    }
+    `;
+    
     this.renderers = {
+      table: makeTableRenderer({
+        cssRules,
+        WebView,
+      }),
       ...HTMLRenderers,
       ...(this.props.renderers || {}),
     };
@@ -103,11 +123,33 @@ export default class HTML extends PureComponent {
     html = html.split('text-decoration').join('textDecorationLine');
     html = html.split('&quot;').join('"');
     html = html.split('"Times New Roman";"').join('Times New Roman;"');
-    let doParseDOM = false;
+
+    //support table with wrap
+    const cssRules = `
+    table {
+      table-layout: fixed !important;
+      width: 100% !important;
+    }
+    td {
+      word-wrap: break-word !important;
+    }
+    `;
+
+     renderers = {
+      table: makeTableRenderer({
+        cssRules,
+        WebView,
+      }),
+    ...renderers
+    };
+    
 
     this.generateDefaultStyles(this.props.baseFontStyle);
     if (renderers !== this.props.renderers) {
-      this.renderers = { ...HTMLRenderers, ...(this.props.renderers || {}) };
+      this.renderers = { table: makeTableRenderer({
+        cssRules,
+        WebView,
+      }), ...HTMLRenderers, ...(this.props.renderers || {}) };
     }
     if (html !== this.props.html || uri !== this.props.uri) {
       // If the source changed, register the new HTML and parse it
@@ -265,13 +307,16 @@ export default class HTML extends PureComponent {
   mapDOMNodesTORNElements(DOMNodes, parentTag = false, props = this.props) {
     const {
       ignoreNodesFunction,
-      ignoredTags,
-      alterNode,
+      // ignoredTags,
+      // alterNode,
       alterData,
       alterChildren,
       tagsStyles,
       classesStyles,
     } = props;
+   
+    let alterNode = alterNodePlugin;
+    let ignoredTags = IGNORED_TAGS;
     let RNElements = DOMNodes.map((node, nodeIndex) => {
       let { children, data } = node;
       if (ignoreNodesFunction && ignoreNodesFunction(node, parentTag) === true) {
